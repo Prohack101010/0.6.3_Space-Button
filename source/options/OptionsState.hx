@@ -24,39 +24,33 @@ import flixel.tweens.FlxTween;
 import flixel.util.FlxTimer;
 import flixel.input.keyboard.FlxKey;
 import flixel.graphics.FlxGraphic;
+import flixel.addons.display.FlxBackdrop;
 import Controls;
 
 using StringTools;
 
 class OptionsState extends MusicBeatState
 {
-	var options:Array<String> = [
-	    #if android
-    	    'Mobile Config',
-    	    'Mobile Setting',
-	    #end
-	    'Note Colors',
-	    'Controls',
-	    'Adjust Delay and Combo',
-	    'Graphics',
-	    'Visuals and UI',
-	    'Gameplay'
-	   ];
+	var options:Array<String> = ['Note Colors', 'Controls', 'Adjust Delay and Combo', 'Graphics', 'Visuals and UI', 'Gameplay'];
 	private var grpOptions:FlxTypedGroup<Alphabet>;
 	private static var curSelected:Int = 0;
 	public static var menuBG:FlxSprite;
+	var tipText:FlxText;
+	
+	var bgMove:FlxBackdrop;
+	var ColorArray:Array<Int> = [
+		0xFF9400D3,
+		0xFF4B0082,
+		0xFF0000FF,
+		0xFF00FF00,
+		0xFFFFFF00,
+		0xFFFF7F00,
+		0xFFFF0000
+	                                
+	    ];
 
 	function openSelectedSubstate(label:String) {
 		switch(label) {
-		    #if android
-    		    case 'Mobile Config':
-					FlxTransitionableState.skipNextTransIn = true;
-        			FlxTransitionableState.skipNextTransOut = true;
-    				MusicBeatState.switchState(new options.MobileConfigState());
-    		    case 'Mobile Setting':
-    				removeVirtualPad();
-    				openSubState(new options.MobileSettingSubState());
-    		#end
 			case 'Note Colors':
 				#if android
 				removeVirtualPad();
@@ -106,14 +100,36 @@ class OptionsState extends MusicBeatState
 		bg.antialiasing = ClientPrefs.globalAntialiasing;
 		add(bg);
 
+		bgMove = new FlxBackdrop(Paths.image('mainmenu_sprite/backdrop'), 1, 1, true, true, 0, 0);
+		//bgMove.scrollFactor.set();
+		bgMove.alpha = 0.1;
+		bgMove.color = ColorArray[MainMenuState.currentColor];
+		bgMove.screenCenter();
+		bgMove.velocity.set(FlxG.random.bool(50) ? 90 : -90, FlxG.random.bool(50) ? 90 : -90);
+		//bgMove.antialiasing = ClientPrefs.globalAntialiasing;
+		add(bgMove);
+		#if android
+		tipText = new FlxText(150, FlxG.height - 24, 0, 'Press X to Go In Android Controls Menu', 16);
+			tipText.setFormat("VCR OSD Mono", 17, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+			tipText.borderSize = 1.25;
+			tipText.scrollFactor.set();
+			tipText.antialiasing = ClientPrefs.globalAntialiasing;
+			add(tipText);
+			tipText = new FlxText(150, FlxG.height - 44, 0, 'Press Y to Go In Hitbox Settings Menu', 16);
+			tipText.setFormat("VCR OSD Mono", 17, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+			tipText.borderSize = 1.25;
+			tipText.scrollFactor.set();
+			tipText.antialiasing = ClientPrefs.globalAntialiasing;
+			add(tipText);
+		#end	
 		grpOptions = new FlxTypedGroup<Alphabet>();
-		add(grpOptions);
+		add(grpOptions);	
 
 		for (i in 0...options.length)
 		{
-			var optionText:Alphabet = new Alphabet(0, 0, options[i], true);
-			optionText.screenCenter();
-			optionText.y += (90 * (i - (options.length / 2))) + 50;
+			var optionText:Alphabet = new Alphabet(150, 0, options[i], true);
+			//optionText.screenCenter();
+			optionText.y += (100 * (i - (options.length / 2))) + 360;
 			grpOptions.add(optionText);
 		}
 
@@ -125,8 +141,25 @@ class OptionsState extends MusicBeatState
 		changeSelection();
 		ClientPrefs.saveSettings();
 
+		/* #if android
+		var tipText:FlxText = new FlxText(10, 12, 0, 'Press X to Go In Android Controls Menu', 16);
+		tipText.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		tipText.borderSize = 2;
+		tipText.scrollFactor.set();
+		add(tipText);
+		var tipText:FlxText = new FlxText(10, 32, 0, 'Press Y to Go In Hitbox Settings Menu', 16);
+		tipText.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		tipText.borderSize = 2;
+		tipText.scrollFactor.set();
+		add(tipText);
+		#end 
+		*/
+
+		changeSelection();
+		ClientPrefs.saveSettings();
+
 		#if android
-		addVirtualPad(UP_DOWN, A_B);
+		addVirtualPad(UP_DOWN, A_B_X_Y);
 		#end
 
 		super.create();
@@ -148,9 +181,26 @@ class OptionsState extends MusicBeatState
 		}
 
 		if (controls.BACK) {
-			FlxG.sound.play(Paths.sound('cancelMenu'));
-			MusicBeatState.switchState(new MainMenuState());
+			if (PauseSubState.MoveOption) {
+				MusicBeatState.switchState(new PlayState());
+				PauseSubState.MoveOption = false;
+			} else {
+				FlxG.sound.play(Paths.sound('cancelMenu'));
+				MusicBeatState.switchState(new MainMenuState());
+			}
 		}
+
+		#if android
+		if (_virtualpad.buttonX.justPressed) {
+			FlxTransitionableState.skipNextTransIn = true;
+			FlxTransitionableState.skipNextTransOut = true;
+			MusicBeatState.switchState(new android.AndroidControlsMenu());
+		}
+		if (_virtualpad.buttonY.justPressed) {
+			removeVirtualPad();
+			openSubState(new android.HitboxSettingsSubState());
+		}
+		#end
 
 		if (controls.ACCEPT) {
 			openSelectedSubstate(options[curSelected]);
