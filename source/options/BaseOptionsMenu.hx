@@ -24,6 +24,7 @@ import flixel.tweens.FlxTween;
 import flixel.util.FlxTimer;
 import flixel.input.keyboard.FlxKey;
 import flixel.graphics.FlxGraphic;
+import flixel.addons.display.FlxBackdrop;
 import Controls;
 
 using StringTools;
@@ -33,10 +34,12 @@ class BaseOptionsMenu extends MusicBeatSubstate
 	private var curOption:Option = null;
 	private var curSelected:Int = 0;
 	private var optionsArray:Array<Option>;
-
+	
+	private var grpNote:FlxTypedGroup<FlxSprite>;
 	private var grpOptions:FlxTypedGroup<Alphabet>;
 	private var checkboxGroup:FlxTypedGroup<CheckboxThingie>;
 	private var grpTexts:FlxTypedGroup<AttachedText>;
+	public var showNotes:Bool = false;
 
 	private var boyfriend:Character = null;
 	private var descBox:FlxSprite;
@@ -44,6 +47,18 @@ class BaseOptionsMenu extends MusicBeatSubstate
 
 	public var title:String;
 	public var rpcTitle:String;
+	
+	var bgMove:FlxBackdrop;
+	var ColorArray:Array<Int> = [
+		0xFF9400D3,
+		0xFF4B0082,
+		0xFF0000FF,
+		0xFF00FF00,
+		0xFFFFFF00,
+		0xFFFF7F00,
+		0xFFFF0000
+	                                
+	    ];
 
 	public function new()
 	{
@@ -61,6 +76,15 @@ class BaseOptionsMenu extends MusicBeatSubstate
 		bg.screenCenter();
 		bg.antialiasing = ClientPrefs.globalAntialiasing;
 		add(bg);
+		
+		bgMove = new FlxBackdrop(Paths.image('mainmenu_sprite/backdrop'), 1, 1, true, true, 0, 0);
+		//bgMove.scrollFactor.set();
+		bgMove.alpha = 0.1;
+		bgMove.color = ColorArray[MainMenuState.currentColor];
+		bgMove.screenCenter();
+		bgMove.velocity.set(FlxG.random.bool(50) ? 90 : -90, FlxG.random.bool(50) ? 90 : -90);
+		//bgMove.antialiasing = ClientPrefs.globalAntialiasing;
+		add(bgMove);
 
 		// avoids lagspikes while scrolling through menus!
 		grpOptions = new FlxTypedGroup<Alphabet>();
@@ -128,7 +152,8 @@ class BaseOptionsMenu extends MusicBeatSubstate
                 #if android
                 addVirtualPad(FULL, A_B_C);
                 #end
-
+        grpNote = new FlxTypedGroup<FlxSprite>();
+		add(grpNote);
 	}
 
 	public function addOption(option:Option) {
@@ -151,7 +176,7 @@ class BaseOptionsMenu extends MusicBeatSubstate
 		}
 
 		if (controls.BACK) {
-			#if android
+		    #if android
 			FlxTransitionableState.skipNextTransOut = true;
 			FlxG.resetState();
 			#else
@@ -249,7 +274,7 @@ class BaseOptionsMenu extends MusicBeatSubstate
 				}
 			}
 
-			if(controls.RESET #if android || _virtualpad.buttonC.justPressed #end)
+			if(controls.RESET  #if android || _virtualpad.buttonC.justPressed #end)
 			{
 				for (i in 0...optionsArray.length)
 				{
@@ -334,6 +359,16 @@ class BaseOptionsMenu extends MusicBeatSubstate
 		{
 			boyfriend.visible = optionsArray[curSelected].showBoyfriend;
 		}
+		
+		if (optionsArray[curSelected].showNote == false){
+		 remove(grpNote);
+		}
+		else{
+		remove(grpNote);		
+		grpNote = new FlxTypedGroup<FlxSprite>();
+		add(grpNote);
+		reloadNotes();
+		}
 		curOption = optionsArray[curSelected]; //shorter lol
 		FlxG.sound.play(Paths.sound('scrollMenu'));
 	}
@@ -354,6 +389,33 @@ class BaseOptionsMenu extends MusicBeatSubstate
 		boyfriend.dance();
 		insert(1, boyfriend);
 		boyfriend.visible = wasVisible;
+	}
+	public function reloadNotes()
+		{
+			for (i in 0...ClientPrefs.arrowHSV.length) {
+				var notes:FlxSprite = new FlxSprite((i * 125), 100);
+				if (ClientPrefs.NoteSkin != 'original')  {
+				notes.frames = Paths.getSparrowAtlas('NoteSkin/' + ClientPrefs.NoteSkin);
+				}    
+				else{
+				    notes.frames = Paths.getSparrowAtlas('NOTE_assets');
+				}
+				var animations:Array<String> = ['purple0', 'blue0', 'green0', 'red0'];
+				notes.animation.addByPrefix('idle', animations[i]);
+				notes.animation.play('idle');
+				//showNotes = notes.visible;
+				notes.scale.set(0.8, 0.8);
+				notes.x += 700;
+				notes.antialiasing = ClientPrefs.globalAntialiasing;
+				grpNote.add(notes);
+				
+				var newShader:ColorSwap = new ColorSwap();
+			    notes.shader = newShader.shader;
+			    newShader.hue = ClientPrefs.arrowHSV[i][0] / 360;
+			    newShader.saturation = ClientPrefs.arrowHSV[i][1] / 100;
+			    newShader.brightness = ClientPrefs.arrowHSV[i][2] / 100;
+			    
+		}
 	}
 
 	function reloadCheckboxes() {
