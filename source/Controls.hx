@@ -10,11 +10,14 @@ import flixel.input.actions.FlxActionSet;
 import flixel.input.gamepad.FlxGamepadButton;
 import flixel.input.gamepad.FlxGamepadInputID;
 import flixel.input.keyboard.FlxKey;
+
 #if android
 import flixel.group.FlxGroup;
 import android.FlxHitbox;
+import android.FlxNewHitbox;
 import android.FlxVirtualPad;
 import flixel.ui.FlxButton;
+import android.flixel.FlxButton as FlxNewButton;
 #end
 
 #if (haxe >= "4.0.0")
@@ -48,6 +51,9 @@ enum abstract Action(String) to String from String
 	var BACK = "back";
 	var PAUSE = "pause";
 	var RESET = "reset";
+	var SPACE = 'space';
+	var SPACE_P = 'space-press';
+	var SPACE_R = 'space-release';
 }
 #else
 @:enum
@@ -81,6 +87,7 @@ abstract Action(String) to String from String
 	var BACK = "back";
 	var PAUSE = "pause";
 	var RESET = "reset";
+	var SPACE = 'space';
 }
 #end
 
@@ -109,6 +116,7 @@ enum Control
 	ACCEPT;
 	BACK;
 	PAUSE;
+	SPACE;
 }
 
 enum KeyboardScheme
@@ -153,6 +161,9 @@ class Controls extends FlxActionSet
 	var _back = new FlxActionDigital(Action.BACK);
 	var _pause = new FlxActionDigital(Action.PAUSE);
 	var _reset = new FlxActionDigital(Action.RESET);
+	var _space = new FlxActionDigital(Action.SPACE);
+	var _spaceP = new FlxActionDigital(Action.SPACE_P);
+	var _spaceR = new FlxActionDigital(Action.SPACE_R);
 
 	#if (haxe >= "4.0.0")
 	var byName:Map<String, FlxActionDigital> = [];
@@ -302,6 +313,21 @@ class Controls extends FlxActionSet
 
 	inline function get_RESET()
 		return _reset.check();
+	
+	public var SPACE(get, never):Bool;
+
+	inline function get_SPACE()
+		return _space.check();		
+	
+	public var SPACE_R(get, never):Bool;
+
+	inline function get_SPACE_R()
+		return _spaceR.check();		
+		
+	public var SPACE_P(get, never):Bool;
+
+	inline function get_SPACE_P()
+		return _spaceP.check();			
 
 	#if (haxe >= "4.0.0")
 	public function new(name, scheme = None)
@@ -336,6 +362,9 @@ class Controls extends FlxActionSet
 		add(_back);
 		add(_pause);
 		add(_reset);
+		add(_space);
+		add(_spaceP);
+		add(_spaceR);
 
 		for (action in digitalActions)
 			byName[action.name] = action;
@@ -375,6 +404,9 @@ class Controls extends FlxActionSet
 		add(_back);
 		add(_pause);
 		add(_reset);
+		add(_space);
+		add(_spaceP);
+		add(_spaceR);
 
 		for (action in digitalActions)
 			byName[action.name] = action;
@@ -396,13 +428,21 @@ class Controls extends FlxActionSet
 		action.add(input);
 	}
 	
+	
 	//rework later
-	public function addButtonNOTES(action:FlxActionDigital, button:FlxButton, state:FlxInputState)
+	public function addButtonNOTES(action:FlxActionDigital, button:FlxNewButton, state:FlxInputState)
 	{
 		var input = new FlxActionInputDigitalIFlxInput(button, state);
 		trackedinputsNOTES.push(input);
 		action.add(input);
 	}
+	
+	public function addbuttonUI(action:FlxActionDigital, button:FlxNewButton, state:FlxInputState) {
+		var input = new FlxActionInputDigitalIFlxInput(button, state);
+		trackedinputsUI.push(input);
+		action.add(input);
+	}
+	
 
 	public function addbuttonuUI(action:FlxActionDigital, button:FlxButton, state:FlxInputState) {
 		var input = new FlxActionInputDigitalIFlxInput(button, state);
@@ -417,7 +457,18 @@ class Controls extends FlxActionSet
 		inline forEachBound(Control.NOTE_LEFT, (action, state) -> addbuttonuNOTES(action, hitbox.buttonLeft, state));
 		inline forEachBound(Control.NOTE_RIGHT, (action, state) -> addbuttonuNOTES(action, hitbox.buttonRight, state));	
 	}
-
+	
+	
+	public function setNewHitBox(Hitbox:FlxNewHitbox)
+	{
+		inline forEachBound(Control.NOTE_UP, (action, state) -> addButtonNOTES(action, Hitbox.buttonUp, state));
+		inline forEachBound(Control.NOTE_DOWN, (action, state) -> addButtonNOTES(action, Hitbox.buttonDown, state));
+		inline forEachBound(Control.NOTE_LEFT, (action, state) -> addButtonNOTES(action, Hitbox.buttonLeft, state));
+		inline forEachBound(Control.NOTE_RIGHT, (action, state) -> addButtonNOTES(action, Hitbox.buttonRight, state));
+		inline forEachBound(Control.NOTE_RIGHT, (action, state) -> addButtonNOTES(action, Hitbox.buttonRight, state));
+		inline forEachBound(Control.SPACE, (action, state) -> addbuttonUI(action, Hitbox.buttonSpace, state));
+	}
+	
 	public function setVirtualPadUI(virtualPad:FlxVirtualPad, ?DPad:FlxDPadMode, ?Action:FlxActionMode) 
 	{
 		switch (DPad)
@@ -457,7 +508,7 @@ class Controls extends FlxActionSet
                         case B:
 				inline forEachBound(Control.BACK, (action, state) -> addbuttonuUI(action, virtualPad.buttonB, state));
 			case D:
-                //nothing
+                                //nothing				
 			case A_B:
 				inline forEachBound(Control.ACCEPT, (action, state) -> addbuttonuUI(action, virtualPad.buttonA, state));
 				inline forEachBound(Control.BACK, (action, state) -> addbuttonuUI(action, virtualPad.buttonB, state));
@@ -479,11 +530,13 @@ class Controls extends FlxActionSet
             case FULL:
 				inline forEachBound(Control.ACCEPT, (action, state) -> addbuttonuUI(action, virtualPad.buttonA, state));
 				inline forEachBound(Control.BACK, (action, state) -> addbuttonuUI(action, virtualPad.buttonB, state));	
-            case CHART_EDITOR:
-				inline forEachBound(Control.UI_LEFT, (action, state) -> addbuttonuUI(action, virtualPad.buttonLeft2, state));
-				inline forEachBound(Control.UI_RIGHT, (action, state) -> addbuttonuUI(action, virtualPad.buttonRight2, state));                        
+			case CHART_EDITOR:
 				inline forEachBound(Control.ACCEPT, (action, state) -> addbuttonuUI(action, virtualPad.buttonA, state));
-				inline forEachBound(Control.BACK, (action, state) -> addbuttonuUI(action, virtualPad.buttonB, state));	
+				inline forEachBound(Control.BACK, (action, state) -> addbuttonuUI(action, virtualPad.buttonB, state));
+			case B_E:
+				//inline forEachBound(Control.ACCEPT, (action, state) -> addbuttonuUI(action, virtualPad.buttonA, state));
+				inline forEachBound(Control.BACK, (action, state) -> addbuttonuUI(action, virtualPad.buttonB, state));
+			
 			case NONE:
 		}
 	}
@@ -548,12 +601,14 @@ class Controls extends FlxActionSet
 				inline forEachBound(Control.BACK, (action, state) -> addbuttonuNOTES(action, virtualPad.buttonB, state));
             case FULL:
 				inline forEachBound(Control.ACCEPT, (action, state) -> addbuttonuNOTES(action, virtualPad.buttonA, state));
-				inline forEachBound(Control.BACK, (action, state) -> addbuttonuNOTES(action, virtualPad.buttonB, state));              
-            case CHART_EDITOR:
-				inline forEachBound(Control.UI_LEFT, (action, state) -> addbuttonuNOTES(action, virtualPad.buttonLeft2, state));
-				inline forEachBound(Control.UI_RIGHT, (action, state) -> addbuttonuNOTES(action, virtualPad.buttonRight2, state));                        
+				inline forEachBound(Control.BACK, (action, state) -> addbuttonuNOTES(action, virtualPad.buttonB, state));
+			case CHART_EDITOR:
 				inline forEachBound(Control.ACCEPT, (action, state) -> addbuttonuNOTES(action, virtualPad.buttonA, state));
-				inline forEachBound(Control.BACK, (action, state) -> addbuttonuNOTES(action, virtualPad.buttonB, state));	
+				inline forEachBound(Control.BACK, (action, state) -> addbuttonuNOTES(action, virtualPad.buttonB, state));
+			case B_E:
+				//inline forEachBound(Control.ACCEPT, (action, state) -> addbuttonuNOTES(action, virtualPad.buttonA, state));
+				inline forEachBound(Control.BACK, (action, state) -> addbuttonuNOTES(action, virtualPad.buttonB, state));
+				              
 			case NONE:
 		}
 	}
@@ -624,6 +679,7 @@ class Controls extends FlxActionSet
 			case BACK: _back;
 			case PAUSE: _pause;
 			case RESET: _reset;
+			case SPACE: _space;
 		}
 	}
 
@@ -683,6 +739,10 @@ class Controls extends FlxActionSet
 				func(_pause, JUST_PRESSED);
 			case RESET:
 				func(_reset, JUST_PRESSED);
+			case SPACE:
+				func(_space, PRESSED);
+				func(_spaceP, JUST_PRESSED);
+				func(_spaceR, JUST_RELEASED);
 		}
 	}
 
@@ -867,6 +927,7 @@ class Controls extends FlxActionSet
 				inline bindKeys(Control.BACK, keysMap.get('back'));
 				inline bindKeys(Control.PAUSE, keysMap.get('pause'));
 				inline bindKeys(Control.RESET, keysMap.get('reset'));
+				
 			case Duo(true):
 				inline bindKeys(Control.UI_UP, [W]);
 				inline bindKeys(Control.UI_DOWN, [S]);
